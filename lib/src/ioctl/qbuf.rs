@@ -9,6 +9,7 @@ use std::os::unix::prelude::RawFd;
 use thiserror::Error;
 
 use crate::bindings;
+use crate::bindings::V4L2_BUF_FLAG_REQUEST_FD;
 use crate::bindings::v4l2_buffer;
 use crate::ioctl::ioctl_and_convert;
 use crate::ioctl::BufferFlags;
@@ -154,6 +155,11 @@ impl<H: PlaneHandle> QBuffer<H> {
         self
     }
 
+    pub fn set_request(mut self, fd: RawFd) -> Self {
+        self.request = Some(fd);
+        self
+    }
+
     fn fill_common_v4l2_data(&self, v4l2_buf: &mut v4l2_buffer) {
         v4l2_buf.memory = H::Memory::MEMORY_TYPE as u32;
         v4l2_buf.flags = self.flags.bits();
@@ -162,6 +168,7 @@ impl<H: PlaneHandle> QBuffer<H> {
         v4l2_buf.timestamp.tv_sec = self.timestamp.tv_sec();
         v4l2_buf.timestamp.tv_usec = self.timestamp.tv_usec();
         if let Some(request) = &self.request {
+            v4l2_buf.flags |= V4L2_BUF_FLAG_REQUEST_FD;
             v4l2_buf.__bindgen_anon_1.request_fd = *request;
         }
     }

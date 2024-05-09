@@ -6,6 +6,7 @@ use crate::memory::*;
 use std::convert::Infallible;
 use std::{
     fmt::{self, Debug},
+    os::fd::RawFd,
     sync::Arc,
 };
 
@@ -66,6 +67,7 @@ pub struct QBuffer<'a, D: Direction, P: PrimitiveBufferHandles, Q: BufferHandles
     index: usize,
     num_planes: usize,
     timestamp: TimeVal,
+    request: Option<RawFd>,
     fuse: BufferStateFuse<Q>,
     _p: std::marker::PhantomData<P>,
 }
@@ -83,6 +85,7 @@ impl<'a, D: Direction, P: PrimitiveBufferHandles, Q: BufferHandles + From<P>> QB
             index: buffer.index,
             num_planes: buffer.planes.len(),
             timestamp: TimeVal::zero(),
+            request: None,
             fuse,
             _p: std::marker::PhantomData,
         }
@@ -104,6 +107,11 @@ impl<'a, D: Direction, P: PrimitiveBufferHandles, Q: BufferHandles + From<P>> QB
         self
     }
 
+    pub fn set_request(mut self, fd: RawFd) -> Self {
+        self.request = Some(fd);
+        self
+    }
+
     // R is meant to mean "either P or Q".
     // Caller is responsible for making sure that the number of planes and
     // plane_handles is the same as the number of expected planes for this
@@ -116,6 +124,7 @@ impl<'a, D: Direction, P: PrimitiveBufferHandles, Q: BufferHandles + From<P>> QB
         let qbuffer = ioctl::QBuffer::<P::HandleType> {
             planes,
             timestamp: self.timestamp,
+            request: self.request,
             ..Default::default()
         };
 
